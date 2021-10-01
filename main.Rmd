@@ -1,0 +1,67 @@
+---
+title: "Baseline Simulations"
+author: "Or Duek"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+---
+
+```{r}
+# load libraries
+require(ggplot2)
+require(tidyr)
+require(lme4)
+require(lmerTest)
+```
+
+# Introduction
+Here we will simulate randomized controlled trial of two groups (placebo and treatment) for 3 (or more) time points.
+The main idea is to test the effect of using the baseline score as a covariate in a mixed level model.
+
+# Generating Data
+First, the total number of patients
+```{r}
+n = 100 # number of subjects
+score <- rnorm(n, 55, 10) # generate data for PCL scores of PTSD patients
+
+hist(score)
+```
+
+Now we shal divide them to two groups.
+Group 1 (trt) will improve an average of 10 points at time 2 and another 5 at time 3
+Group 2 (placebo) will improve an average of 2 points on time 2 and 1 on time 3
+
+```{r}
+scoreTrt <-  score[1:(n/2)]
+scorePlacebo <- score[((n/2)+1):n]
+treatment <- data.frame(score = scoreTrt)
+placebo <- data.frame(score = scorePlacebo)
+treatment$group <- 'trt'
+placebo$group <- 'placebo'
+# and combine into your new data frame vegLengths
+both <- rbind(treatment, placebo)
+ggplot(both, aes(x=score, fill = group)) + geom_density(alpha = 0.2) + theme_minimal()
+```
+So we see we start with similar distribution.
+Now lets generate the change
+
+```{r}
+# in treatment group we remove an average of 10 points
+changeTrt1 <- rnorm((n/2),10,5)
+changeTrt2 <- rnorm((n/2),5,5)
+hist(changeTrt1)
+treatment$time2 <- treatment$score - changeTrt1 
+treatment$time3 <- treatment$time2 - changeTrt2 
+
+# now for the plcebo group
+changePlacebo1 <- rnorm((n/2),2,5)
+changePlacebo2 <- rnorm((n/2),1,5)
+placebo$time2 <- placebo$score - changePlacebo1 
+placebo$time3 <- placebo$time2 - changePlacebo2 
+
+both <- rbind(treatment, placebo)
+both_long <- pivot_longer(both, cols = c('score','time2','time3'), names_to = 'time')
+ggplot(both_long, aes(x=value, fill=time)) + facet_grid(~group) + geom_density(alpha=0.2) + theme_minimal()
+```
+
