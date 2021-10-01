@@ -61,7 +61,56 @@ placebo$time2 <- placebo$score - changePlacebo1
 placebo$time3 <- placebo$time2 - changePlacebo2 
 
 both <- rbind(treatment, placebo)
+both$subject <- as.factor(1:n)
 both_long <- pivot_longer(both, cols = c('score','time2','time3'), names_to = 'time')
 ggplot(both_long, aes(x=value, fill=time)) + facet_grid(~group) + geom_density(alpha=0.2) + theme_minimal()
 ```
+
+# Effect of statistical model
+Now we can compare the effect of mixed level model or other on the ability to recover data
+
+## Basic mixed level
+We start with the basic mixed level design, subjects as random effect
+
+```{r}
+model1 <- lmer(value ~ time * group + (1|subject), data= both_long)
+summary(model1)
+anova(model1)
+```
+
+The model recovers the data well, but not perfect. It finds the general time effect, the group effect and the interaction.
+
+## Mixed level with subjects nested within groups
+```{r}
+model2 <- lmer(value ~ time * group + (1|group/subject), data= both_long)
+summary(model2)
+anova(model2)
+```
+
+Model doesn not converge (?)
+
+## Next - adding baseline 
+
+```{r}
+# first build the dataset
+both2 <- both
+both2$baseline <- both2$score
+both2_long <- pivot_longer(both2, cols = c('score','time2','time3'), names_to = 'time')
+```
+
+### Using baseline and all levels
+```{r}
+model3 <- lmer(value ~ time * group + baseline + (1|subject), data= both2_long)
+summary(model3)
+#anova(model3)
+```
+### Using baseline instead of level 1 of the time variable
+
+```{r}
+both2_long2 <- dplyr::filter(both2_long, time!='score')
+model4 <- lmer(value ~ time * group + baseline + (1|group/subject), data= both2_long2)
+summary(model4)
+anova(model4)
+```
+
 
