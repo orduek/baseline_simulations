@@ -1,6 +1,6 @@
 ---
 title: "Baseline Simulations"
-author: "Or Duek"
+author: "Or Duek & Tobias R. Spiller"
 output:
   html_document:
     toc: true
