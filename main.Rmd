@@ -26,6 +26,7 @@ First, the total number of patients
 n = 100 # number of subjects
 score <- rnorm(n, 55, 10) # generate data for PCL scores of PTSD patients
 hist(score)
+mean(score)
 ```
 
 Now we shal divide them to two groups.
@@ -50,7 +51,7 @@ Now lets generate the change
 # in treatment group we remove an average of 10 points
 changeTrt1 <- rnorm((n/2),10,5)
 changeTrt2 <- rnorm((n/2),5,5)
-hist(changeTrt1)
+
 treatment$time2 <- treatment$score - changeTrt1 
 treatment$time3 <- treatment$time2 - changeTrt2 
 
@@ -66,6 +67,8 @@ both_long <- pivot_longer(both, cols = c('score','time2','time3'), names_to = 't
 ggplot(both_long, aes(x=value, fill=time)) + facet_grid(~group) + geom_density(alpha=0.2) + theme_minimal()
 ```
 
+So, the mean change of the treatment group in time 1 is `r mean(changeTrt1)` and in time 2 its `r mean(changeTrt2)`.
+The mean changes in the placebo group are time1 = `r mean(changePlacebo1)` and time2 = `r mean(changePlacebo2)`
 # Effect of statistical model
 Now we can compare the effect of mixed level model or other on the ability to recover data
 
