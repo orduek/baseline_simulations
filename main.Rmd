@@ -5,6 +5,7 @@ output:
   html_document:
     toc: true
     toc_depth: 3
+    toc_float: yes
 ---
 
 ```{r}
@@ -24,7 +25,6 @@ First, the total number of patients
 ```{r}
 n = 100 # number of subjects
 score <- rnorm(n, 55, 10) # generate data for PCL scores of PTSD patients
-
 hist(score)
 ```
 
@@ -78,6 +78,14 @@ summary(model1)
 anova(model1)
 ```
 
+Time as factor
+
+```{r}
+model1.1 <- lmer(value ~ as.factor(time) * group + (1|subject), data= both_long)
+summary(model1.1)
+anova(model1.1)
+```
+
 The model recovers the data well, but not perfect. It finds the general time effect, the group effect and the interaction.
 
 ## Mixed level with subjects nested within groups
@@ -104,6 +112,15 @@ model3 <- lmer(value ~ time * group + baseline + (1|subject), data= both2_long)
 summary(model3)
 #anova(model3)
 ```
+
+Time as factor
+```{r}
+model3.1 <- lmer(value ~ as.factor(time) * group + baseline + (1|subject), data= both2_long)
+summary(model3.1)
+#anova(model3)
+```
+
+
 ### Using baseline instead of level 1 of the time variable
 
 ```{r}
@@ -111,6 +128,23 @@ both2_long2 <- dplyr::filter(both2_long, time!='score')
 model4 <- lmer(value ~ time * group + baseline + (1|group/subject), data= both2_long2)
 summary(model4)
 anova(model4)
+```
+
+Time as factor
+```{r}
+model4.1 <- lmer(value ~ as.factor(time) * group + baseline + (1|group/subject), data= both2_long2)
+summary(model4.1)
+anova(model4.1)
+
+```
+
+# Test correlation of the data
+
+```{r}
+p1 <- plot(treatment$score, treatment$time2)
+cor.test(treatment$score, treatment$time2)
+p2 <- plot(treatment$time2, treatment$time3)
+cor.test(treatment$time2, treatment$time3)
 ```
 
 
