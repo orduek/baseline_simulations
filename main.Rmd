@@ -11,9 +11,12 @@ output:
 ```{r}
 # load libraries
 require(ggplot2)
-require(tidyr)
+require(tidyverse)
 require(lme4)
+require(nlme)
 require(lmerTest)
+require(emmeans)
+require(cowplot)
 ```
 
 # Introduction
@@ -81,7 +84,7 @@ summary(model1)
 anova(model1)
 ```
 
-Time as factor
+time as factor
 
 ```{r}
 model1.1 <- lmer(value ~ as.factor(time) * group + (1|subject), data= both_long)
@@ -116,7 +119,7 @@ summary(model3)
 #anova(model3)
 ```
 
-Time as factor
+time as factor
 ```{r}
 model3.1 <- lmer(value ~ as.factor(time) * group + baseline + (1|subject), data= both2_long)
 summary(model3.1)
@@ -133,7 +136,7 @@ summary(model4)
 anova(model4)
 ```
 
-Time as factor
+time as factor
 ```{r}
 model4.1 <- lmer(value ~ as.factor(time) * group + baseline + (1|group/subject), data= both2_long2)
 summary(model4.1)
@@ -150,4 +153,124 @@ p2 <- plot(treatment$time2, treatment$time3)
 cor.test(treatment$time2, treatment$time3)
 ```
 
+## NLME
 
+### CS
+The Std.Error is the same at all timepoints (because it is "symmetric").
+```{r}
+LME_CS <- lme(value ~ as.factor(time) * group,
+              random = ~ 1 | subject,  
+              correlation=corCompSymm(form=~ 1 | subject),
+              data=both2_long,
+              na.action = "na.exclude")
+
+summary(LME_CS)
+```
+### US
+The Std.Error is different at different measurement time points.
+```{r}
+LME_US <- lme(value ~ as.factor(time) * group,
+              random = ~ 1 | subject,  
+              correlation=corSymm(form=~ 1 | subject),
+              data=both2_long,
+              na.action = "na.exclude")
+
+summary(LME_US)
+```
+### AR(1)
+The Std.Error is the same at all timepoints (because it is "symmetric").
+```{r}
+LME_AR <- lme(value ~ as.factor(time) * group,
+              random = ~ 1 | subject,  
+              correlation=corAR1(form=~ 1 | subject),
+              data=both2_long,
+              na.action = "na.exclude")
+
+summary(LME_AR)
+```
+
+### Compare models
+CS vs AR(1) vs US
+```{r}
+anova(LME_CS, LME_AR, LME_US)
+```
+
+AR shows best fit, but not sig diff.
+
+
+
+### Check Assumptions of AR(1) model
+
+[@zuur2010][@gelman2006]
+
+Assumption 1: Linearity Because the DV is a Categorical variable, linearity is not assessed.
+
+Assumption 2: Homogeneity of Variance
+
+```{r Final Model FIX Assumptions 2, echo=FALSE, warning=TRUE, message=TRUE}
+plot(resid(LME_AR))
+```
+
+Assumption 2: Normally distributed Residuals
+
+```{r Final Model FIX Assumptions 3, echo=FALSE, warning=TRUE, message=TRUE}
+qqnorm(resid(LME_AR))
+```
+## EMM for groups
+
+```{r Final Model EMM, echo=FALSE, warning=TRUE, message=TRUE}
+emmeans(LME_AR, ~ group*as.factor(time))
+```
+
+```{r Figure 2.2, message=TRUE, warning=TRUE, echo=FALSE}
+## Extract adjusted means
+Adjusted_means_fix <- as_tibble(emmeans(LME_AR, ~ group*time)) %>% 
+  mutate(time = as.factor(time))
+
+L1 <- ggplot(Adjusted_means_fix, aes(x=time, y = Outcome)) +
+  geom_line(data = Adjusted_means_fix , aes(x = time, y = emmean, 
+                                            group = group,
+                                            color=group,
+                                            linetype = group)) +
+  geom_point(data = Adjusted_means_fix, aes(x = time, y = emmean, 
+                                            group = group,
+                                            color=group), 
+             size = 1.5) +
+  geom_errorbar(data = Adjusted_means_fix, aes(x = time, y = emmean, 
+                                               ymin = lower.CL, ymax = upper.CL,
+                                               color = group), 
+                width = .1) +
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(30, 65),
+                     breaks = c(30,35,40, 45, 50, 55, 60, 65)) +
+  scale_x_discrete(
+    breaks = c("score","time2","time3"),
+    label = c("Baseline", "T2", "T3")) +
+  ylab("PCL Score") +
+  xlab("Study Period") +
+  theme_cowplot() +
+  scale_color_manual(values=c("#0D0087FF", "#d11141"),
+                     labels = c("placebo", "trt")) +
+  theme(
+    plot.title = element_text(size=11),
+    axis.title.x = element_text(size=11, 
+                                margin = margin(t = 5, r = 0, b = 0, l = 0), 
+                                colour = "black"),
+    axis.title.y = element_text(size=11, 
+                                margin = margin(t = 0, r = 5, b = 0, l = 0), 
+                                colour = "black"),
+    axis.text.x = element_text(size=11, color = "black"),
+    axis.text.y = element_text(size=11, color = "black", 
+                               margin = margin(t = 0, r = 2, b = 0, l = 0)),
+    axis.ticks = element_line(colour = "black", size=0.4),
+    panel.grid.major.x = element_blank(), 
+    panel.grid.major.y = element_line(size=.2, color="grey66"), 
+    panel.grid.minor.y = element_blank(), 
+    panel.grid.minor.x = element_blank(),
+    legend.position = c(.70, .85),
+    legend.title = element_blank(),
+    legend.margin = margin(t = 3, r = 2, b = 3, l = 2),
+    legend.box.background = element_rect(fill = "white", color="black", size=0.4),
+    legend.box.margin = margin(t = 3, r = 2, b = 3, l = 2))
+L1
+```
